@@ -3,9 +3,9 @@ package main
 import (
   "encoding/json"
   "fmt"
-  "ndn/packet"
   "net"
   "sync"
+  "bitbucket.org/polyu-named-data-network/ndn/packet"
 )
 
 func main() {
