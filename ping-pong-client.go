@@ -1,11 +1,12 @@
 package main
 
 import (
+  "bitbucket.org/polyu-named-data-network/ndn/packet"
+  "bitbucket.org/polyu-named-data-network/ndn/packet/contentname"
   "encoding/json"
   "fmt"
   "net"
   "sync"
-  "bitbucket.org/polyu-named-data-network/ndn/packet"
 )
 
 func main() {
@@ -21,7 +22,14 @@ func main() {
   }
 
   fmt.Println("preparing interest packet")
-  out_packet := packet.InterestPacket_s{}
+  out_packet := packet.InterestPacket_s{
+    ContentName: packet.ContentName_s{
+      Name: "ping",
+      Type: contentname.ExactMatch,
+    },
+    SeqNum:     1,
+    AllowCache: false,
+  }
   err = json.NewEncoder(interestConn).Encode(out_packet)
   if err != nil {
     fmt.Println("failed to encode interest packet", err)
