@@ -23,7 +23,7 @@ func main() {
 
   fmt.Println("preparing interest packet")
   out_packet := packet.InterestPacket_s{
-    ContentName: packet.ContentName_s{
+    ContentName: contentname.ContentName_s{
       Name: "ping",
       Type: contentname.ExactMatch,
     },
