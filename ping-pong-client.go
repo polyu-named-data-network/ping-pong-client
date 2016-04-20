@@ -20,7 +20,7 @@ func main() {
   wg := sync.WaitGroup{}
 
   /* establish data connection */
-  dataConn, err := net.Dial("tcp", "127.0.0.1:8124")
+  dataConn, err := net.Dial("tcp", "127.0.0.1:8123")
   if err != nil {
     fmt.Println("failed to connect to proxy data service", err)
     panic(3)
@@ -50,8 +50,8 @@ func main() {
   fmt.Println("preparing interest packet")
   out_packet := packet.InterestPacket_s{
     ContentName: contentname.ContentName_s{
-      Name: "ping",
-      Type: contentname.ExactMatch,
+      Name:        "ping",
+      ContentType: contentname.ExactMatch,
     },
     SeqNum:     1,
     AllowCache: false,
