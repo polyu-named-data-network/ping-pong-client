@@ -3,12 +3,13 @@ package main
 import (
   "bitbucket.org/polyu-named-data-network/ndn/packet"
   "bitbucket.org/polyu-named-data-network/ndn/packet/contentname"
+  "bitbucket.org/polyu-named-data-network/ndn/packet/datatype"
+  "bitbucket.org/polyu-named-data-network/ndn/packet/packettype"
+  "bitbucket.org/polyu-named-data-network/ndn/utils"
   "encoding/json"
   "fmt"
   "github.com/aabbcc1241/goutils/log"
   "net"
-  "strconv"
-  "sync"
 )
 
 func init() {
@@ -17,65 +18,65 @@ func init() {
 func main() {
   fmt.Println("NDN application demo - ping-pong client start")
 
-  wg := sync.WaitGroup{}
-
-  /* establish data connection */
-  dataConn, err := net.Dial("tcp", "127.0.0.1:8123")
+  /* connect to proxy */
+  conn, err := net.Dial("tcp", "127.0.0.1:8123")
   if err != nil {
-    fmt.Println("failed to connect to proxy data service", err)
-    panic(3)
-  }
-  _, dataPort_string, _ := net.SplitHostPort(dataConn.LocalAddr().String())
-  dataPort, _ := strconv.Atoi(dataPort_string)
-  wg.Add(1)
-  go func() {
-    defer wg.Done()
-    var in_packet packet.DataPacket_s
-    log.Debug.Println("data connection", dataConn.LocalAddr())
-    fmt.Println("wait for data packet")
-    json.NewDecoder(dataConn).Decode(&in_packet)
-    fmt.Println("received data packet", in_packet)
-    fmt.Println("data content (string)", string(in_packet.ContentData))
-  }()
-
-  /* wait for data packet (response)*/
-
-  /* establish interest connection */
-  interestConn, err := net.Dial("tcp", "127.0.0.1:8123")
-  if err != nil {
-    fmt.Println("failed to connect to proxy interest service", err)
+    log.Error.Println("failed to connect to proxy", err)
     panic(1)
   }
 
-  fmt.Println("preparing interest packet")
-  out_packet := packet.InterestPacket_s{
+  encoder := json.NewEncoder(conn)
+  decoder := json.NewDecoder(conn)
+
+  /* request data */
+  log.Info.Println("preparing request packet")
+  p1 := packet.InterestPacket_s{
     ContentName: contentname.ContentName_s{
-      Name:        "ping",
-      ContentType: contentname.ExactMatch,
+      Name:           "ping",
+      ContentType:    contentname.ExactMatch,
+      ContentParam:   nil,
+      AcceptDataType: []datatype.Base{datatype.RAW},
     },
-    SeqNum:     1,
-    AllowCache: false,
-    DataPort:   dataPort,
+    SeqNum:             1,
+    AllowCache:         true,
+    PublisherPublicKey: utils.ZeroKey,
   }
-  err = json.NewEncoder(interestConn).Encode(out_packet)
+  p2, err := p1.ToGenericPacket()
   if err != nil {
-    fmt.Println("failed to encode interest packet", err)
+    log.Error.Println("failed to marshal interest data", err)
     panic(2)
   }
-  fmt.Println("sent interest packet")
+  if err := encoder.Encode(p2); err != nil {
+    log.Error.Println("failed to sent packet", err)
+    panic(3)
+  }
+  log.Info.Println("sent request packet")
 
-  /* prepare interest packet (request) */
-  wg.Add(1)
-  go func() {
-    defer wg.Done()
-    var in_packet packet.InterestReturnPacket_s
-    fmt.Println("wait for interestReturn packet")
-    json.NewDecoder(interestConn).Decode(&in_packet)
-    fmt.Println("received interestReturn packet", in_packet)
-  }()
+  /* wait for data */
+  log.Info.Println("waiting for data")
+  var in_packet packet.GenericPacket_s
+  if err := decoder.Decode(&in_packet); err != nil {
+    log.Error.Println("failed decode income packet", err)
+    panic(4)
+  }
+  if in_packet.PacketType == packettype.DataPacket_c {
+    var p packet.DataPacket_s
+    err := json.Unmarshal(in_packet.Payload, &p)
+    if err != nil {
+      log.Error.Println("failed to parse data packet")
+      panic(5)
+    }
+    log.Info.Println("received data:", string(p.ContentData))
+  } else if in_packet.PacketType == packettype.InterestReturnPacket_c {
+    var p packet.InterestReturnPacket_s
+    if err := decoder.Decode(&p); err != nil {
+      log.Error.Println("failed to parse interest return packet")
+      panic(6)
+    }
+    log.Info.Println("interest return, resultcode:", p.ReturnCode)
+  } else {
+    log.Error.Println("unexpected packet", in_packet)
+  }
 
-  /* wait for interest return (NAK) */
-
-  wg.Wait()
   fmt.Println("NDN application demo - ping-pong client end")
 }
