@@ -5,6 +5,7 @@ import (
 	"bitbucket.org/polyu-named-data-network/ndn/packet/contentname"
 	"bitbucket.org/polyu-named-data-network/ndn/packet/datatype"
 	"bitbucket.org/polyu-named-data-network/ndn/packet/packettype"
+	"bitbucket.org/polyu-named-data-network/ndn/packet/returncode"
 	"bitbucket.org/polyu-named-data-network/ndn/utils"
 	"encoding/json"
 	"fmt"
@@ -69,11 +70,15 @@ func main() {
 		log.Info.Println("received data:", string(p.ContentData))
 	} else if in_packet.PacketType == packettype.InterestReturnPacket_c {
 		var p packet.InterestReturnPacket_s
-		if err := decoder.Decode(&p); err != nil {
+		if err := json.Unmarshal(in_packet.Payload, &p); err != nil {
 			log.Error.Println("failed to parse interest return packet")
 			panic(6)
 		}
-		log.Info.Println("interest return, resultcode:", p.ReturnCode)
+		reason := "replease check returncode.go"
+		if p.ReturnCode == returncode.NoRoute {
+			reason = "NoRoute"
+		}
+		log.Info.Println("interest return, resultcode:", p.ReturnCode, "reason:", reason)
 	} else {
 		log.Error.Println("unexpected packet", in_packet)
 	}
