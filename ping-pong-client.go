@@ -25,6 +25,7 @@ func main() {
     fmt.Println("failed to connect to proxy data service", err)
     panic(3)
   }
+  fmt.Println("started data socket", dataConn.LocalAddr().String())
   _, dataPort_string, _ := net.SplitHostPort(dataConn.LocalAddr().String())
   dataPort, _ := strconv.Atoi(dataPort_string)
   wg.Add(1)
@@ -32,13 +33,15 @@ func main() {
     defer wg.Done()
     var in_packet packet.DataPacket_s
     log.Debug.Println("data connection", dataConn.LocalAddr())
+    /* wait for data packet (response)*/
     fmt.Println("wait for data packet")
     json.NewDecoder(dataConn).Decode(&in_packet)
     fmt.Println("received data packet", in_packet)
     fmt.Println("data content (string)", string(in_packet.ContentData))
   }()
 
-  /* wait for data packet (response)*/
+  /* establish interest return connection */
+  //interestReturnConn,err:=net.Dial("tcp","127.0.0.1:8123")
 
   /* establish interest connection */
   interestConn, err := net.Dial("tcp", "127.0.0.1:8123")
